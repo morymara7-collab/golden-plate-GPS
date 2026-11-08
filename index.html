@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vitrine Restaurant</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: en-tête de restaurant, filtres de catégories collants, grille de plats 2 colonnes (1 sur très petit écran), fiche plat en feuille du bas, barre panier flottante. */
+:root{
+  --bg:#F3F6F1; --surface:#FFFFFF; --fg:#17251F; --muted:#5C6B63; --line:#DCE4DD;
+  --accent:#17603F; --accent-fg:#FFFFFF; --price:#FFE08A; --price-fg:#4A3500;
+  --wa:#128C4A; --danger:#B3261E;
+  --t1:#FBE3C4; --t2:#DDEFD3; --t3:#FAD4CF; --t4:#D7E6F5; --t5:#EEDDF2;
+  --font-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --font-body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1814; --surface:#17241E; --fg:#EAF2EC; --muted:#9DB0A5; --line:#294036;
+    --accent:#5FD39A; --accent-fg:#06281A; --price:#5B4710; --price-fg:#FFE9A8;
+    --wa:#2BB673; --danger:#FF8A80;
+    --t1:#3A2D1A; --t2:#1F3523; --t3:#3E2220; --t4:#1D2D3E; --t5:#2E2234;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1814; --surface:#17241E; --fg:#EAF2EC; --muted:#9DB0A5; --line:#294036;
+  --accent:#5FD39A; --accent-fg:#06281A; --price:#5B4710; --price-fg:#FFE9A8;
+  --wa:#2BB673; --danger:#FF8A80;
+  --t1:#3A2D1A; --t2:#1F3523; --t3:#3E2220; --t4:#1D2D3E; --t5:#2E2234;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.45;
+  padding-block:0 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:760px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.demo{margin:12px 0 0;padding:8px 12px;border:1px dashed var(--line);border-radius:8px;font-size:13px;color:var(--muted)}
+header{padding:22px 0 8px}
+.hero{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px;margin:12px 0 0}
+header h1{font-family:var(--font-display);font-weight:800;font-size:clamp(30px,8vw,44px);line-height:1.05;margin:0 0 6px;text-wrap:balance;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:14px}
+.facts span{display:inline-flex;gap:6px;align-items:center}
+.facts b{font-weight:700}
+
+.cats{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;gap:8px;overflow-x:auto;padding:10px 0;margin-top:8px;background:var(--bg);scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px;font-weight:500;font-size:15px}
+.cat[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+
+h2.sec{font-family:var(--font-display);font-size:22px;margin:22px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:340px){.grid{grid-template-columns:minmax(0,1fr)}}
+@media (min-width:640px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.card{display:flex;flex-direction:column;text-align:left;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:14px;overflow:hidden;min-width:0}
+.card:active{transform:scale(.985)}
+.tile{aspect-ratio:4/3;display:grid;place-items:center;font-size:54px;background:var(--t1);width:100%;overflow:hidden}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.card .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .name{font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.price{align-self:flex-start;background:var(--price);color:var(--price-fg);font-weight:700;font-size:14px;padding:3px 9px;border-radius:6px;font-variant-numeric:tabular-nums}
+
+[hidden]{display:none !important}
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:96vh;max-height:96dvh;min-height:70vh;min-height:70dvh;overflow-y:auto;border-radius:18px 18px 0 0;
+  padding:0 max(16px,env(safe-area-inset-left,0px)) calc(18px + env(safe-area-inset-bottom,0px))}
+@media (min-width:640px){.overlay{align-items:center}.sheet{border-radius:18px;max-height:90vh;min-height:0}}
+.sheet .tile{aspect-ratio:2/1;margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));width:calc(100% + 2 * max(16px,env(safe-area-inset-left,0px)));font-size:84px}
+.sheet h3{font-family:var(--font-display);font-size:26px;margin:16px 0 4px;line-height:1.1}
+.sheet .desc{margin:0 0 12px;color:var(--muted)}
+.close{position:sticky;top:8px;float:right;margin-top:8px;z-index:2;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:20px;line-height:1}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.row label,.lab{font-weight:700;font-size:14px}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stepper button{width:42px;height:42px;border:0;background:var(--bg);font-size:20px}
+.stepper output{min-width:42px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mode{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:14px 4px;font-size:15px;font-weight:500;text-align:center}
+.mode[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-fg);font-weight:700}
+.field{display:block;width:100%;margin-top:10px;padding:14px 14px;min-height:50px;font-size:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font:inherit}
+.total{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 10px;font-weight:700}
+.total strong{font-family:var(--font-display);font-size:26px;font-variant-numeric:tabular-nums}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 16px;border-radius:12px;border:0;font-weight:700;font-size:16px;text-decoration:none;text-align:center}
+.btn.wa{background:var(--wa);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid var(--accent);color:var(--accent);margin-top:10px}
+.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.hint{font-size:13px;color:var(--muted);margin:8px 0 0}
+
+.cartbar{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+.cartbar .btn{max-width:760px;margin:0 auto;justify-content:space-between;background:var(--accent);color:var(--accent-fg)}
+.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.line .n{font-weight:700;overflow-wrap:anywhere}
+.line .s{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.line .rm{grid-row:1/3;grid-column:2;align-self:center;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--danger)}
+footer{margin:28px 0 8px;font-size:13px;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:10px 14px;font-size:15px}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-fg);font-weight:700}
+.posmsg{font-size:14px;margin-top:8px;color:var(--muted,#6b6b6b);min-height:1.2em}
+textarea.field{min-height:76px;resize:vertical}
+.mode small{font-weight:400;opacity:.85;font-size:13px}
+details.extras{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+details.extras summary{padding:14px;font-weight:700;font-size:15px;cursor:pointer}
+.exrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.exn{font-weight:500;overflow-wrap:anywhere}
+.exprice{grid-column:1;color:var(--muted);font-size:14px}
+.exsel{grid-column:1;font:inherit;font-size:15px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
+.exrow .stepper{grid-column:2;grid-row:1/3;align-self:center}
+.stepper.small button{width:38px;height:38px}
+.xtitle{display:block;font-size:17px;margin:18px 0 8px}
+.xgrid{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 2px 8px;margin:0 -2px}
+.xgrid .xcard{flex:0 0 146px;scroll-snap-align:start}
+.xcard{border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
+.xcard.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.xcard .tile{aspect-ratio:4/3;font-size:40px}
+.xgrid::-webkit-scrollbar{height:4px}
+.xn{font-weight:700;font-size:15px;padding:8px 10px 0;line-height:1.15;overflow-wrap:anywhere}
+.xp{padding:4px 10px 0;color:var(--muted);font-weight:700;font-size:15px}
+.xsz{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 8px 0}
+.xs{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:6px 2px;font-size:12px;line-height:1.2}
+.xs b{font-size:13px}
+.xs[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.xcard .stepper{margin:8px;align-self:stretch;justify-content:space-between}
+.xcard .stepper button{flex:0 0 46px;width:46px;height:46px;font-size:24px}
+.xcard .stepper output{flex:1;font-size:18px}
+</style>
+
+<div class="wrap">
+  <img class="hero" src="plats/facade.jpg" alt="Devanture du restaurant Golden Plate">
+  <header>
+    <h1 id="rNom"></h1>
+    <p id="rSlogan"></p>
+    <div class="facts" id="rFacts"></div>
+  </header>
+  <nav class="cats" id="cats" aria-label="Catégories"></nav>
+  <main id="menu"></main>
+  <footer id="foot"></footer>
+</div>
+
+<div class="cartbar" id="cartbar" hidden>
+  <button class="btn" id="openCart" type="button"><span id="cartCount"></span><span id="cartTotal"></span></button>
+</div>
+
+<div class="overlay" id="ov" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+
+<script>
+/* ===== À MODIFIER POUR CHAQUE RESTAURANT ===== */
+var RESTAURANT = {
+  nom: "Golden Plate",
+  slogan: "Cuisine guinéenne, faite maison chaque jour.",
+  whatsapp: "224627809706",        // indicatif pays + numéro, sans + ni espaces
+  devise: "GNF",
+  horaires: "Tous les jours, 7h à 23h",
+  ville: "Kankan",
+  livraison: "Livraison en ville : prix selon le quartier, confirmé sur WhatsApp."
+};
+/* photo : nom d'un fichier publié avec la page (ex. "plats/poulet.jpg"). Sans photo, une pastille de couleur s'affiche. */
+var PLATS = [
+  {id:1, cat:"Riz et sauces", nom:"Attiéké poulet grillé", prix:55000, desc:"Attiéké, poulet grillé et légumes.", emoji:"🍽️", tint:2, photo:"plats/01.jpg"},
+  {id:2, cat:"Riz et sauces", nom:"Lafidi poisson fumé", prix:42000, desc:"Riz lafidi avec du poisson fumé.", emoji:"🍽️", tint:3, photo:"plats/02.jpg"},
+  {id:3, cat:"Riz et sauces", nom:"Mafé bœuf", prix:48000, desc:"Bœuf en sauce d'arachide, riz blanc.", emoji:"🍽️", tint:4, photo:"plats/03.jpg"},
+  {id:4, cat:"Riz et sauces", nom:"Kedjenou poulet", prix:58000, desc:"Poulet mijoté à l'étouffée avec des légumes.", emoji:"🍽️", tint:5, photo:"plats/04.jpg"},
+  {id:5, cat:"Riz et sauces", nom:"Fufu sauce gombo", prix:40000, desc:"Fufu servi avec sauce gombo et viande.", emoji:"🍽️", tint:1, photo:"plats/05.jpg"},
+  {id:6, cat:"Riz et sauces", nom:"Sauce gombo", prix:35000, desc:"Sauce gombo, poisson fumé.", emoji:"🍽️", tint:2, photo:"plats/06.jpg"},
+  {id:7, cat:"Riz et sauces", nom:"Poulet yassa", prix:45000, desc:"Poulet mariné aux oignons, riz blanc.", emoji:"🍽️", tint:3, photo:"plats/07.jpg"},
+  {id:8, cat:"Riz et sauces", nom:"Riz gras", prix:35000, desc:"Riz cuisiné à la viande et aux légumes.", emoji:"🍽️", tint:4, photo:"plats/08.jpg"},
+  {id:9, cat:"Riz et sauces", nom:"Ketiakh", prix:40000, desc:"Poisson mariné aux poivrons, façon ketiakh.", emoji:"🍽️", tint:5, photo:"plats/09.jpg"},
+  {id:10, cat:"Grillades", nom:"Dibi brochettes", prix:60000, desc:"Brochettes de viande grillées aux oignons.", emoji:"🍽️", tint:1, photo:"plats/10.jpg"},
+  {id:11, cat:"Grillades", nom:"8 ailes croustillantes", prix:52000, desc:"Huit ailes de poulet croustillantes.", emoji:"🍽️", tint:2, photo:"plats/11.jpg"},
+  {id:12, cat:"Grillades", nom:"Alloco banane", prix:25000, desc:"Bananes plantain frites dorées.", emoji:"🍽️", tint:3, photo:"plats/12.jpg"},
+  {id:13, cat:"Fast-food", nom:"Shawarma", prix:65000, desc:"Shawarma avec frites et salade.", emoji:"🍽️", tint:4, photo:"plats/13.jpg"},
+  {id:14, cat:"Fast-food", nom:"Petite pizza végé", prix:38000, desc:"Petite pizza aux légumes.", emoji:"🍽️", tint:5, photo:"plats/14.jpg"},
+  {id:15, cat:"Fast-food", nom:"Cheeseburger", prix:50000, desc:"Burger au fromage, avec frites.", emoji:"🍽️", tint:1, photo:"plats/15.jpg"},
+  {id:16, cat:"Accompagnements", nom:"Frites", prix:20000, desc:"Portion de frites.", emoji:"🍽️", tint:2, photo:"plats/16.jpg"},
+  {id:31, cat:"Boissons", nom:"Jus de gingembre", prix:10000, desc:"Jus naturel traditionnel de gingembre.", emoji:"🥤", tint:1, photo:"plats/31.jpg"},
+  {id:32, cat:"Boissons", nom:"Jus de bissap", prix:10000, desc:"Jus d'hibiscus rouge.", emoji:"🥤", tint:2, photo:"plats/32.jpg"},
+  {id:33, cat:"Boissons", nom:"Jus de tamarin", prix:10000, desc:"Jus naturel acidulé de tamarin.", emoji:"🥤", tint:3, photo:"plats/33.jpg"},
+  {id:34, cat:"Boissons", nom:"Jus de baobab", prix:10000, desc:"Jus traditionnel de pain de singe.", emoji:"🥤", tint:4, photo:"plats/34.jpg"},
+  {id:35, cat:"Boissons", nom:"Jus d'ananas", prix:10000, desc:"Jus de fruit frais.", emoji:"🥤", tint:5, photo:"plats/35.jpg"},
+  {id:36, cat:"Boissons", nom:"Jus d'orange", prix:10000, desc:"Jus de fruit frais.", emoji:"🥤", tint:1, photo:"plats/36.jpg"},
+  {id:37, cat:"Boissons", nom:"Coca-Cola", prix:10000, desc:"Boisson gazeuse.", emoji:"🥤", tint:2, photo:"plats/37.jpg"},
+  {id:38, cat:"Boissons", nom:"Fanta Orange", prix:10000, desc:"Boisson gazeuse à l'orange.", emoji:"🥤", tint:3, photo:"plats/38.jpg"},
+  {id:39, cat:"Boissons", nom:"Sprite", prix:10000, desc:"Boisson gazeuse citron-citron vert.", emoji:"🥤", tint:4, photo:"plats/39.jpg"},
+  {id:40, cat:"Boissons", nom:"Youki Pomme", prix:10000, desc:"Boisson gazeuse fruitée à la pomme.", emoji:"🥤", tint:5, photo:"plats/40.jpg"},
+  {id:41, cat:"Boissons", nom:"Eau", prix:5000, tailles:[{n:"Petit bidon",prix:5000},{n:"Grand bidon",prix:10000}], desc:"Eau fraîche.", emoji:"💧", tint:4, photo:"plats/41.jpg"}
+];
+/* ============================================== */
+
+function unit(p,t){ return p.tailles ? p.tailles[t||0].prix : p.prix; }
+function label(p,t){ return p.tailles ? p.nom+" ("+p.tailles[t||0].n.toLowerCase()+")" : p.nom; }
+var fmt = function(n){ return Math.round(n).toLocaleString("fr-FR") + " " + RESTAURANT.devise; };
+var $ = function(id){ return document.getElementById(id); };
+var state = { cat:"Tout", cart:[], cur:null, qty:1, mode:"Livraison", adresse:"", pos:null, posMsg:"", size:0, comp:[], note:"", ex:{}, open:{} };
+
+function tileHTML(p){
+  var inner = p.photo ? '<img src="'+p.photo+'" alt="'+p.nom+'" loading="lazy">' : '<span aria-hidden="true">'+p.emoji+'</span>';
+  return '<div class="tile" style="background:var(--t'+(p.tint||1)+')">'+inner+'</div>';
+}
+
+function init(){
+  document.title = RESTAURANT.nom;
+  $("rNom").textContent = RESTAURANT.nom;
+  $("rSlogan").textContent = RESTAURANT.slogan;
+  $("rFacts").innerHTML = '<span><b>Horaires</b> '+RESTAURANT.horaires+'</span><span><b>Ville</b> '+RESTAURANT.ville+'</span>';
+  $("foot").textContent = RESTAURANT.livraison;
+  renderCats(); renderMenu(); renderCartBar();
+}
+
+function categories(){
+  var seen = ["Tout"];
+  PLATS.forEach(function(p){ if(seen.indexOf(p.cat) < 0) seen.push(p.cat); });
+  return seen;
+}
+function renderCats(){
+  $("cats").innerHTML = categories().map(function(c){
+    return '<button type="button" class="cat" data-cat="'+c+'" aria-pressed="'+(c===state.cat)+'">'+c+'</button>';
+  }).join("");
+  Array.prototype.forEach.call($("cats").children, function(b){
+    b.onclick = function(){ state.cat = b.dataset.cat; renderCats(); renderMenu(); };
+  });
+}
+function renderMenu(){
+  var cats = state.cat === "Tout" ? categories().slice(1) : [state.cat];
+  $("menu").innerHTML = cats.map(function(c){
+    var items = PLATS.filter(function(p){ return p.cat === c; });
+    return '<h2 class="sec">'+c+'</h2><div class="grid">'+items.map(function(p){
+      return '<button type="button" class="card" data-id="'+p.id+'">'+tileHTML(p)+
+        '<div class="body"><span class="name">'+p.nom+'</span><span class="price">'+(p.tailles?'dès ':'')+fmt(p.prix)+'</span></div></button>';
+    }).join("")+'</div>';
+  }).join("");
+  Array.prototype.forEach.call(document.querySelectorAll(".card"), function(b){
+    b.onclick = function(){ openDish(+b.dataset.id); };
+  });
+}
+
+function open_(html){ var was = !$("ov").hidden, y = $("sheet").scrollTop; $("sheet").innerHTML = html; $("ov").hidden = false; $("sheet").scrollTop = was ? y : 0; }
+function close_(){ $("ov").hidden = true; state.cur = null; }
+$("ov").addEventListener("click", function(e){ if(e.target === $("ov")) close_(); });
+document.addEventListener("keydown", function(e){ if(e.key === "Escape") close_(); });
+
+function waLink(text){ return "https://wa.me/" + RESTAURANT.whatsapp + "?text=" + encodeURIComponent(text); }
+var COMPLEMENTS = ["Piment à part","Sans piment","Bien cuit","Sans oignon","Couverts","Serviette"];
+function modeBlock(){
+  var modes = ["Livraison","Sur place","À emporter"];
+  return '<div class="lab">Comment voulez-vous récupérer la commande ?</div><div class="modes" style="margin-top:8px">'+
+    modes.map(function(m){ return '<button type="button" class="mode" data-mode="'+m+'" aria-pressed="'+(state.mode===m)+'">'+m+'</button>'; }).join("")+'</div>'+
+    '<div id="adrBox" '+(state.mode==="Livraison"?"":"hidden")+'><div class="lab" style="margin-top:14px">Votre quartier ou adresse</div>'+
+    '<input class="field" id="adr" placeholder="Ex : Kabada, près de la mosquée" value="'+state.adresse.replace(/"/g,"&quot;")+'" autocomplete="street-address">'+
+    '<button type="button" class="btn ghost" id="posBtn">'+(state.pos?'✓ Ma position est ajoutée (appuyer pour la mettre à jour)':'📍 Envoyer ma position')+'</button>'+
+    '<div class="posmsg" id="posMsg">'+(state.posMsg||(state.pos?'':'Facultatif : le restaurant reçoit un lien pour vous trouver sur la carte.'))+'</div></div>';
+}
+function getPos(refresh){
+  var m = $("posMsg"), b = $("posBtn");
+  if(!navigator.geolocation){ state.posMsg = "Votre téléphone ne permet pas la localisation. Écrivez votre quartier."; refresh(); return; }
+  if(b) b.textContent = "Recherche de votre position…";
+  navigator.geolocation.getCurrentPosition(function(p){
+    state.pos = {lat:p.coords.latitude, lng:p.coords.longitude, acc:Math.round(p.coords.accuracy||0)};
+    state.posMsg = state.pos.acc > 200 ? "Position approximative (environ "+state.pos.acc+" m). Ajoutez aussi votre quartier." : "Position ajoutée à votre commande.";
+    refresh();
+  }, function(err){
+    state.pos = null;
+    state.posMsg = err && err.code === 1 ? "Localisation refusée. Autorisez-la dans votre téléphone ou écrivez votre quartier." : "Position introuvable. Activez le GPS ou écrivez votre quartier.";
+    refresh();
+  }, {enableHighAccuracy:true, timeout:20000, maximumAge:60000});
+}
+function bindMode(refresh){
+  Array.prototype.forEach.call(document.querySelectorAll(".mode[data-mode]"), function(b){
+    b.onclick = function(){ state.mode = b.dataset.mode; refresh(); };
+  });
+  var a = $("adr"); if(a) a.oninput = function(){ state.adresse = a.value; refresh(true); };
+  var pb = $("posBtn"); if(pb) pb.onclick = function(){ getPos(refresh); };
+}
+function tail(){
+  var t = "Mode : " + state.mode + ".";
+  if(state.mode === "Livraison" && state.adresse.trim()) t += " Quartier : " + state.adresse.trim() + ".";
+  if(state.mode === "Livraison" && state.pos) t += " Ma position : https://www.google.com/maps?q=" + state.pos.lat.toFixed(6) + "," + state.pos.lng.toFixed(6);
+  return t;
+}
+
+function openDish(id){
+  state.cur = PLATS.filter(function(p){ return p.id === id; })[0]; state.qty = 1; state.size = 0; state.ex = {};
+  drawDish();
+}
+function sizeBlock(p){
+  if(!p.tailles) return "";
+  return '<div class="lab" style="margin-top:14px">Choisissez la taille</div><div class="modes sizes" style="margin-top:8px;grid-template-columns:repeat(2,minmax(0,1fr))">'+
+    p.tailles.map(function(t,i){ return '<button type="button" class="mode size" data-size="'+i+'" aria-pressed="'+(state.size===i)+'">'+t.n+'<br><small>'+fmt(t.prix)+'</small></button>'; }).join("")+'</div>';
+}
+var EXTRA_GROUPS = [["Boissons","🥤 Choisissez une boisson  ← →"],["Accompagnements","🍟 Choisissez un accompagnement"]];
+function byId(id){ return PLATS.filter(function(x){ return x.id === id; })[0]; }
+function exItems(){
+  return Object.keys(state.ex).map(function(k){ var e = state.ex[k]; return {p:byId(+k), t:e.t||0, qty:e.q||0}; })
+    .filter(function(i){ return i.qty > 0; });
+}
+function dishItems(){ return [{p:state.cur, t:state.size, qty:state.qty}].concat(exItems()); }
+function itemsTotal(items){ return items.reduce(function(s,i){ return s + unit(i.p,i.t) * i.qty; }, 0); }
+function itemsText(items){ return items.map(function(i){ return i.qty+" x "+label(i.p,i.t)+" ("+fmt(unit(i.p,i.t)*i.qty)+")"; }).join(", "); }
+function xcardHTML(x){
+  var e = state.ex[x.id] || {t:0,q:0};
+  var pills = x.tailles ? '<div class="xsz">'+x.tailles.map(function(t,i){ return '<button type="button" class="xs" data-id="'+x.id+'" data-t="'+i+'" aria-pressed="'+(e.t===i)+'">'+t.n.replace(" bidon","")+'<br><b>'+fmt(t.prix)+'</b></button>'; }).join("")+'</div>'
+                          : '<div class="xp">'+fmt(x.prix)+'</div>';
+  return '<div class="xcard'+(e.q>0?' on':'')+'" id="xc'+x.id+'">'+tileHTML(x)+'<div class="xn">'+x.nom+'</div>'+pills+
+    '<div class="stepper small"><button type="button" class="exm" data-id="'+x.id+'" aria-label="Moins">−</button><output id="exq'+x.id+'">'+e.q+'</output><button type="button" class="exp" data-id="'+x.id+'" aria-label="Plus">+</button></div></div>';
+}
+function extrasBlock(p){
+  return EXTRA_GROUPS.filter(function(g){ return g[0] !== p.cat && PLATS.some(function(x){ return x.cat === g[0]; }); }).map(function(g){
+    return '<div class="lab xtitle">'+g[1]+'</div><div class="xgrid">'+PLATS.filter(function(x){ return x.cat === g[0]; }).map(xcardHTML).join("")+'</div>';
+  }).join("");
+}
+function drawDish(soft){
+  var p = state.cur; if(!p) return;
+  var items = dishItems(), pu = unit(p,state.size), total = itemsTotal(items);
+  var msg = "Bonjour, je voudrais : "+itemsText(items)+". "+tail()+" Total : "+fmt(total)+". Merci !";
+  if(soft){ $("waBtn").href = waLink(msg); $("tot").textContent = fmt(total); return; }
+  open_(
+    '<button type="button" class="close" id="x" aria-label="Fermer">×</button>'+tileHTML(p)+
+    '<h3>'+p.nom+'</h3><p class="desc">'+p.desc+'</p><span class="price">'+fmt(pu)+'</span>'+sizeBlock(p)+
+    '<div class="row"><span class="lab">Quantité</span><span class="stepper"><button type="button" id="minus" aria-label="Moins">−</button><output id="q">'+state.qty+'</output><button type="button" id="plus" aria-label="Plus">+</button></span></div>'+
+    extrasBlock(p)+
+    modeBlock()+
+    '<div class="total"><span>Total</span><strong id="tot">'+fmt(total)+'</strong></div>'+
+    '<a class="btn wa" id="waBtn" href="'+waLink(msg)+'" target="_blank" rel="noopener">Commander sur WhatsApp</a>'+
+    '<button type="button" class="btn ghost" id="addCart">Ajouter au panier</button>'+
+    '<p class="hint">Tout part dans un seul message WhatsApp, déjà écrit. Le restaurant confirme le prix de livraison avec vous.</p>'
+  );
+  $("x").onclick = close_;
+  $("minus").onclick = function(){ if(state.qty > 1){ state.qty--; drawDish(); } };
+  $("plus").onclick = function(){ if(state.qty < 20){ state.qty++; drawDish(); } };
+  $("addCart").onclick = function(){ dishItems().forEach(function(i){ addToCart(i.p.id, i.qty, i.t); }); close_(); };
+  Array.prototype.forEach.call(document.querySelectorAll(".size"), function(b){ b.onclick = function(){ state.size = +b.dataset.size; drawDish(); }; });
+  function ex(id){ return state.ex[id] || (state.ex[id] = {t:0,q:0}); }
+  function mark(id){ var e = ex(id); $("exq"+id).textContent = e.q; $("xc"+id).className = "xcard" + (e.q>0 ? " on" : ""); drawDish(true); }
+  Array.prototype.forEach.call(document.querySelectorAll(".exp"), function(b){ b.onclick = function(){ var e = ex(b.dataset.id); if(e.q < 20){ e.q++; mark(b.dataset.id); } }; });
+  Array.prototype.forEach.call(document.querySelectorAll(".exm"), function(b){ b.onclick = function(){ var e = ex(b.dataset.id); if(e.q > 0){ e.q--; mark(b.dataset.id); } }; });
+  Array.prototype.forEach.call(document.querySelectorAll(".xs"), function(b){ b.onclick = function(){
+    var id = b.dataset.id; ex(id).t = +b.dataset.t;
+    Array.prototype.forEach.call(document.querySelectorAll('#xc'+id+' .xs'), function(o){ o.setAttribute("aria-pressed", String(o === b)); });
+    drawDish(true); }; });
+  bindMode(function(soft){ if(soft){ drawDish(true); } else { drawDish(); } });
+}
+
+function addToCart(id, q, t){
+  t = t||0;
+  var l = state.cart.filter(function(x){ return x.id === id && (x.t||0) === t; })[0];
+  if(l) l.qty += q; else state.cart.push({id:id, qty:q, t:t});
+  renderCartBar();
+}
+function cartTotal(){
+  return state.cart.reduce(function(s,l){
+    var p = PLATS.filter(function(x){ return x.id === l.id; })[0];
+    return s + unit(p,l.t) * l.qty;
+  }, 0);
+}
+function renderCartBar(){
+  var n = state.cart.reduce(function(s,l){ return s + l.qty; }, 0);
+  $("cartbar").hidden = n === 0;
+  $("cartCount").textContent = "Mon panier · " + n + (n > 1 ? " plats" : " plat");
+  $("cartTotal").textContent = fmt(cartTotal());
+}
+$("openCart").onclick = function(){ drawCart(); };
+
+function drawCart(soft){
+  var lines = state.cart.map(function(l){
+    var p = PLATS.filter(function(x){ return x.id === l.id; })[0];
+    return {p:p, qty:l.qty, t:l.t||0};
+  });
+  var body = lines.map(function(l){ return l.qty+" x "+label(l.p,l.t)+" ("+fmt(unit(l.p,l.t)*l.qty)+")"; }).join(", ");
+  var msg = "Bonjour, je voudrais : "+body+". "+tail()+" Total : "+fmt(cartTotal())+". Merci !";
+  if(soft){ var w = $("waBtn"); if(w) w.href = waLink(msg); return; }
+  if(!lines.length){ close_(); return; }
+  open_(
+    '<button type="button" class="close" id="x" aria-label="Fermer">×</button><h3>Mon panier</h3>'+
+    lines.map(function(l,i){
+      return '<div class="line"><span class="n">'+l.qty+' x '+label(l.p,l.t)+'</span><span class="s">'+fmt(unit(l.p,l.t)*l.qty)+'</span>'+
+        '<button type="button" class="rm" data-i="'+i+'">Retirer</button></div>';
+    }).join("")+
+    '<div style="margin-top:14px">'+modeBlock()+'</div>'+
+    '<div class="total"><span>Total</span><strong>'+fmt(cartTotal())+'</strong></div>'+
+    '<a class="btn wa" id="waBtn" href="'+waLink(msg)+'" target="_blank" rel="noopener">Envoyer la commande sur WhatsApp</a>'+
+    '<p class="hint">Un seul message contient tous vos plats. Vous discutez ensuite directement avec le restaurant.</p>'
+  );
+  $("x").onclick = close_;
+  Array.prototype.forEach.call(document.querySelectorAll(".rm"), function(b){
+    b.onclick = function(){ state.cart.splice(+b.dataset.i, 1); renderCartBar(); drawCart(); };
+  });
+  bindMode(function(soft){ if(soft){ drawCart(true); } else { drawCart(); } });
+}
+
+init();
+</script>
